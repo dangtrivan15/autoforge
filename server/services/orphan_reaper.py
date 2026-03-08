@@ -12,6 +12,16 @@ This is a safety net for the process-group kill mechanism. It runs every
   3. Have been orphaned for at least 30 seconds (grace period)
 
 Only active on Linux (containers). No-op on macOS/Windows.
+
+TODO: The reaper kills live orphans but cannot clean up zombie processes
+(state Z). Zombies occur when terminated children are reparented to PID 1
+but PID 1 never calls waitpid(). This happens in containerized deployments
+where PID 1 is not a proper init (e.g. no tini/dumb-init). Zombies don't
+consume memory but accumulate PID table entries. Known solutions:
+  - Container-side: use tini or dumb-init as PID 1 (ENTRYPOINT ["tini", "--"])
+  - Code-side: prctl(PR_SET_CHILD_SUBREAPER) to adopt orphans into this
+    process, then reap via SIGCHLD + os.waitpid(-1, WNOHANG)
+See: https://github.com/AutoForgeAI/autoforge/pull/222
 """
 
 import asyncio
